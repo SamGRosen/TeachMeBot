@@ -9,12 +9,16 @@ import timeit
 import json
 import re
 
-consumer_token = "XXX"
-consumer_secret = "XXX"
+from configparser import ConfigParser
+secret = ConfigParser()
+secret.read("secret.cfg")
+credentials = secret["SECRET"]
+consumer_token = credentials["ConsumerToken"]
+consumer_secret = credentials["ConsumerSecret"]
 auth = tweepy.OAuthHandler(consumer_token, consumer_secret)
 # TeachMeBot credentials
-access_key = "XXX"
-access_secret = "XXX"
+access_key = credentials["AccessKey"]
+access_secret = credentials["AccessSecret"]
 auth.set_access_token(access_key, access_secret)
 api = tweepy.API(auth)
 tracking_words = ['@TeachMeBot', 'the', 'is', 'a', 'for', 'be', 'to', 'and' 'in', 'that', 'have', 'I',
@@ -53,7 +57,7 @@ class Brain(dict):
         return self.get_entry(item)[0]["third"]
 
     def __setitem__(self, key, value):
-        print key, value
+        print(key, value)
         first, second = key
         first, second = bytes(first.encode(
             'utf-8')), bytes(second.encode('utf-8'))
@@ -70,7 +74,7 @@ class Brain(dict):
         return len(self.get_entry(item)) > 0
 
     def get_entry(self, item):
-        print item
+        print(item)
         first, second = bytes(item[0].encode(
             "utf-8")), bytes(item[1].encode("utf-8"))
         return self.db.search((self.triple.first == first) & (self.triple.second == second))
@@ -335,9 +339,9 @@ class TweetListener(tweepy.streaming.StreamListener):
 
 def easy_log(*arg):
     try:
-        print ' '.join(arg)
+        print(' '.join(arg))
     except:
-        print arg
+        print(arg)
 
 
 def main_loop():
