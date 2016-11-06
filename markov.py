@@ -1,15 +1,25 @@
-from collections import Counter, namedtuple
+from collections import Counter
 import random
 
-Double = namedtuple("Double", "first", "second")
-
+END_STOP = u"\u3002"
 
 class MarkovChainer:
     def __init__(self):
         self.markovs = {}
 
     def chain(self, double):
-        pass
+        words = []
+        words.extend(double)
+        current_triple = self[double]
+        while words[-1] != END_STOP and len(words) < 50:
+            next_pair = current_triple.next()
+            words.append(next_pair[-1])
+            current_triple = self[next_pair]
+
+        if words[-1] == END_STOP:
+            words.pop()
+
+        return " ".join(words)
 
     def add_triple(self, triple):
         if triple.double not in self.markovs:
@@ -18,17 +28,20 @@ class MarkovChainer:
             self.markovs[triple.double] += triple
 
     def add_sequence(self, text: str):
-        triples = self.create_sequence(MarkovChainer, text)
+        triples = create_sequence(text)
         for triple in triples:
             self.add_triple(triple)
 
     def __getitem__(self, item):
         return self.markovs.get(item, Triple(item[0], item[1]))
 
-    @staticmethod
-    def create_sequence(cls, text: str):
-        tokens = text.split()
-        return [Triple(word, tokens[index + 1], tokens[index + 2]) for index, word in enumerate(tokens[:-2])]
+
+def create_sequence(text: str):
+    tokens = text.split()
+    triples = [Triple(word, tokens[index + 1], tokens[index + 2]) for index, word in enumerate(tokens[:-2])]
+    if len(tokens) > 1:
+        triples.append(Triple(tokens[-2], tokens[-1], END_STOP))
+    return triples
 
 
 class Triple:
@@ -39,13 +52,15 @@ class Triple:
 
     @property
     def double(self):
-        return (self.first, self.second)
+        return self.first, self.second
 
     def next(self):
-        return Double(self.second, self.get_third())
+        return self.second, self.get_third()
 
     def get_third(self):
         total = sum(self.third.values())
+        if total == 0:
+            return END_STOP
         pick = random.randint(0, total - 1)
         count = 0
         for key, weight in self.third.items():
@@ -68,8 +83,10 @@ class Triple:
         return "({t.first}, {t.second}): {ext}".format(t=self, ext=str(self.third))
 
     def __repr__(self):
-        return
+        return self.__str__()
+
 if __name__ == '__main__':
+    test_string = "hello there friend of a friend! it is so very nice to meet you say hello to your friend pally."
     m = MarkovChainer()
-    m.add_sequence("hello there friend of a friend!")
+    m.add_sequence(test_string)
     print(m.markovs[("there", "friend")])
