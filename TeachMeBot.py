@@ -1,6 +1,10 @@
 # Teach Me Bot
 # Python 2.7.8 w/ Tweepy , 3.4 compatible
 from configparser import ConfigParser
+from threading import Thread
+from time import sleep
+
+import datetime
 import random
 import tweepy
 import diary
@@ -63,15 +67,12 @@ class TeachMeBot:
     def loop(self):
         log.info("Bot loop and cycle start")
         self.running = True
-        try:
-            if self.running:
-                self.main_stream()
-        except KeyboardInterrupt:
-            self.disconnect()
-            pass
+        self._thread = Thread(target=self.main_stream)
+        self._thread.start()
+        self.mention_stream.filter(track=[self.mention_listener.handle], languages=['en'], async=True)
 
     def main_stream(self):
-        self.english_stream.filter(track=tracking_words, languages=['en'], async=True)
+        self.english_stream.filter(track=tracking_words, languages=['en'], async=False)
 
     def disconnect(self):
         self.running = False
@@ -80,8 +81,9 @@ class TeachMeBot:
 
     def toggle_stream(self):
         self.english_stream.disconnect()
-        # WAIT UNTIL THE HOUR IN STREAM.FILTER
-        self.english_stream.filter(track=tracking_words, languages=['en'], async=True)
+        now = datetime.datetime.now()
+        sleep(60 * (60 - now.minute) - now.second)
+        self.english_stream.filter(track=tracking_words, languages=['en'], async=False)
 
     def handle_data(self, data):
         if self.is_readable(data):
@@ -132,15 +134,7 @@ class TeachMeBot:
 def main_loop():
     t = TeachMeBot()
     t.load()
-    try:
-        t.loop()
-    except BaseException as e:
-        log.error("ERROR OCCURED -- sleep for 3 min")
-        log.error(e)
-        t.disconnect()
-        del t
-        tweepy.streaming.sleep(180)
-        main_loop()
+    t.loop()
 
 
 if __name__ == '__main__':
