@@ -2,12 +2,12 @@
 # Python 2.7.8 w/ Tweepy , 3.4 compatible
 from configparser import ConfigParser
 from threading import Thread
+from diary import Diary
 from time import sleep
 
 import datetime
 import random
 import tweepy
-import diary
 import json
 
 from listeners import EnglishListener, MentionListener
@@ -29,7 +29,7 @@ tracking_words = ['the', 'is', 'a', 'for', 'be', 'to', 'and' 'in', 'that', 'have
                   'by', 'from', 'they', 'did', 'we', 'say', 'him', 'or', 'an', 'will', 'my', 'one', 'all',
                   'would', 'there', 'their', 'what', 'so', 'up', 'out', 'if', 'about', 'who']
 
-log = diary.Diary("bot.log")
+log = Diary("bot.log")
 END_STOP = u"\u3002"
 
 
@@ -81,19 +81,27 @@ class TeachMeBot:
 
     def toggle_stream(self):
         self.english_stream.disconnect()
+        status = self.random_tweet()
+        api.update_status(status=status)
+        log.log("Status: {}".format(status))
         now = datetime.datetime.now()
-        sleep(60 * (60 - now.minute) - now.second)
+        seconds = 60 * (60 - now.minute) - now.second
+        log.log("Waiting {} seconds until next hour".format(seconds))
+        sleep(seconds)
         self.english_stream.filter(track=tracking_words, languages=['en'], async=False)
 
     def handle_data(self, data):
+
         if self.is_readable(data):
-            self.brain.add_sequence(data["text"])
+            as_json = json.loads(data)
+            self.brain.add_sequence(as_json["text"])
             self.checker.check()
 
     def handle_mention(self, data):
         if self.is_readable(data):
-            self.brain.add_sequence(data["text"])
-            self.reply(data["text"], data["user"])
+            as_json = json.loads(data)
+            self.brain.add_sequence(as_json["text"])
+            self.reply(as_json["text"], as_json["user"])
 
     def is_readable(self, data):
         return "text" in data and "retweeted_status" not in data
@@ -131,11 +139,11 @@ class TeachMeBot:
             api.destroy_status(tweet.id)
 
 
-def main_loop():
+def main():
     t = TeachMeBot()
     t.load()
     t.loop()
 
 
 if __name__ == '__main__':
-    pass
+    main()
