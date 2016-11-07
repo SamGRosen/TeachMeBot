@@ -21,21 +21,25 @@ class EnglishListener(tweepy.streaming.StreamListener):
         else:
             log.error('Sleeping for 30 min due to --')
             log.error(error)
+            print(error)
             sleep(1800)
 
     def on_exception(self, status):
         log.warn('Sleeping for 3 min due to --')
         log.warn(status.args)
+        print(status)
         sleep(180)
 
     def on_limit(self, track):
         log.warn('Sleeping for 30 minutes due to --')
         log.warn(track)
+        print(track)
         sleep(1800)
 
     def on_close(self, resp):
         log.error("Twitter closed connection -- ")
         log.error(resp)
+        print(resp)
         return False
 
     def manual_stop(self):
