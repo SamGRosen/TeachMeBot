@@ -60,7 +60,7 @@ class MarkovChainer:
             self.add_triple(triple)
 
     def get_random_key(self):
-        return random.choice(self.markovs.keys())
+        return random.choice(list(self.markovs.keys()))
 
     def __getitem__(self, item):
         return self.markovs.get(item, Triple(item[0], item[1]))
