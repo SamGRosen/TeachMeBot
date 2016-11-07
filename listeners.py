@@ -1,4 +1,6 @@
 from diary import Diary
+from time import sleep
+
 import tweepy
 
 log = Diary("streaming.log")
@@ -19,17 +21,17 @@ class EnglishListener(tweepy.streaming.StreamListener):
         else:
             log.error('Sleeping for 30 min due to --')
             log.error(error)
-            tweepy.streaming.sleep(1800)
+            sleep(1800)
 
     def on_exception(self, status):
         log.warn('Sleeping for 3 min due to --')
         log.warn(status.args)
-        tweepy.streaming.sleep(180)
+        sleep(180)
 
     def on_limit(self, track):
         log.warn('Sleeping for 30 minutes due to --')
         log.warn(track)
-        tweepy.streaming.sleep(1800)
+        sleep(1800)
 
     def on_close(self, resp):
         log.error("Twitter closed connection -- ")
