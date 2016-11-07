@@ -3,13 +3,12 @@
 import datetime
 import tinydb
 import random
-import string
 import tweepy
 import timeit
 import diary
 import json
-import re
 
+import markov
 from configparser import ConfigParser
 
 secret = ConfigParser()
@@ -35,75 +34,6 @@ log = diary.Diary("bot.log")
 def utf(text):
     return tweepy.utils.convert_to_utf8_str(text)
 
-
-def remove_punctuation(word):
-    ''' Remove punctuation, trailing whitespace, and lower a string '''
-    s = re.compile('[%s]' % re.escape(string.punctuation)).sub(
-        '', word).strip()
-    return s
-
-
-def clean(text, lower=True):
-    s = remove_punctuation(utf(text))
-    if lower:
-        return s.lower()
-    return s
-
-
-class Brain(dict):
-    def __init__(self, db):
-        super(Brain, self).__init__()
-        self.db = db
-        self.triple = tinydb.Query()
-
-    def __getitem__(self, item):
-        return self.get_entry(item)[0]["third"]
-
-    def __setitem__(self, key, value):
-        print(key, value)
-        first, second = key
-        first, second = bytes(first.encode(
-            'utf-8')), bytes(second.encode('utf-8'))
-        new_key = first + second
-        try:
-            new_dict = self.chain_dict(self[new_key], new_key, value)
-        except IndexError:
-            self.db.insert({"first": first, "second": second, "third": value})
-        else:
-            self.db.update({"third": new_dict},
-                           (self.triple.first == first) & (self.triple.second == second))
-
-    def __contains__(self, item):
-        return len(self.get_entry(item)) > 0
-
-    def get_entry(self, item):
-        print(item)
-        first, second = bytes(item[0].encode(
-            "utf-8")), bytes(item[1].encode("utf-8"))
-        return self.db.search((self.triple.first == first) & (self.triple.second == second))
-
-    def random_key(self):
-        entry = self.db.get(eid=random.randint(1, len(self.db)))
-        return (entry.first, entry.second)
-
-    def add_to_double(self, double, word):
-        double = tuple(double)
-        if not double in self:
-            self.db.insert(
-                {"first": double[0], "second": double[1], "third": {word: 1}})
-        self[double] = self.increment_third(self[double], word)
-
-    @staticmethod
-    def increment_third(dic, word):
-        dic[word] = dic.get(word, 0) + 1
-        return dic
-
-    @staticmethod
-    def chain_dict(dic, key, value):
-        dic[key] = value
-        return dic
-
-
 class TeachMeBot():
     def __init__(self, wait=3600, pages=5, rpp=50):
         ''' loop - # of seconds until next tweetsweep
@@ -112,7 +42,7 @@ class TeachMeBot():
         self.wait = wait
         self.pages = pages
         self.rpp = rpp
-        self.brain = Brain(tinydb.TinyDB("twitterDB.json"))
+        self.brain = markov.MarkovChainer()
         self.count = 0
         self.replies = 0
         self.period = '{.}'
@@ -147,86 +77,30 @@ class TeachMeBot():
         self.stream.disconnect()
 
     def reply(self, text, screen_name):
+        tweet = screen_name
         line = text.split()
         if len(line) < 2:
-            api.update_status(status=self.random_tweet())
+            tweet += self.random_tweet()
+            api.update_status(status=tweet)
             return
+
         doubles = [(word, line[i + 1]) for i, word in enumerate(line[:-1])]
-        double = random.choice(doubles)
-        for i in range(20):
+        random.shuffle(doubles)
+
+        for double in doubles:
             if double in self.brain:
-                break
-            double = random.choice(doubles)
+                tweet += self.brain.chain(double)
         else:
-            double = self.random_key()
-        tweet = self.chain(double, screen_name)
+            tweet += self.random_tweet()
         api.update_status(status=tweet)
 
-    def random_key(self):
-        return self.brain.random_key()
-
     def random_tweet(self):
-        return self.chain(self.random_key())
+        return self.brain.chain(self.brain.get_random_key())
 
-    def clean_timeline(self, count=100):
+    def __clean_timeline(self, count=100):
         timeline = api.user_timeline(count=count)
         for tweet in timeline:
             api.destroy_status(tweet.id)
-
-    def chain(self, double, screen_name=None):
-        words = []
-        if screen_name:
-            words.append(utf('@' + screen_name))
-        words.extend(double)
-        pair = double
-        while True:
-            try:
-                pick = self.weighted_pick(self.brain[pair])
-                if pick == '{.}':
-                    break
-                words.append(pick)
-                pair = (pair[-1], pick)
-            except KeyError:
-                break
-        tweet = ' '.encode('utf-8').join(words)
-        if len(tweet) > 140:
-            tweet = self.chain(double)
-        return tweet
-
-    def weighted_pick(self, dic):
-        total = sum(dic.itervalues())
-        pick = random.randint(0, total - 1)
-        tmp = 0
-        for key, weight in dic.iteritems():
-            tmp += weight
-            if pick < tmp:
-                return key
-
-    def add_to_data(self, text, clean_keys=False):
-        ''' Read a line of text and add to triple data
-                * The more bots contributing to this data the better responses '''
-        line = text.split()  # split by space
-        if len(line) >= 3:
-            for i, word in enumerate(line[:-2]):
-                if clean_keys:
-                    # keys are clean, results are not
-                    double = map(clean, (word, line[i + 1]))
-                else:
-                    double = (word, line[i + 1])
-                self.add_to_double(double, line[i + 2])
-            last_words = (line[i + 1], line[i + 2])
-            self.add_to_double(last_words, self.period)
-
-    def add_to_double(self, double, word):
-        self.brain.add_to_double(double, word)
-
-    def save_data(self):
-        self.brain.db.close()
-
-    def save_stats(self, name="botinfo.txt"):
-        with open(name, 'a+') as f:
-            f.write(str(self.count) + '\n')
-            f.write(str(self.replies) + '\n')
 
 
 class TweetListener(tweepy.streaming.StreamListener):

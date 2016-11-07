@@ -1,8 +1,34 @@
 from collections import Counter
 import random
+import string
+import re
 
 END_STOP = u"\u3002"
 
+
+def remove_punctuation(word):
+    ''' Remove punctuation, trailing whitespace, and lower a string '''
+    s = re.compile('[%s]' % re.escape(string.punctuation)).sub(
+        '', word).strip()
+    return s
+
+
+def clean(text, lower=True):
+    s = remove_punctuation(utf(text))
+    if lower:
+        return s.lower()
+    return s
+
+def create_sequence(text: str, clean_keys=False):
+    tokens = text.split()
+    triples = [Triple(word, tokens[index + 1], tokens[index + 2]) for index, word in enumerate(tokens[:-2])]
+    if len(tokens) > 1:
+        triples.append(Triple(tokens[-2], tokens[-1], END_STOP))
+    if clean_keys:
+        for triple in triples:
+            triple.first = clean(triple.first)
+            triple.second = clean(triple.second)
+    return triples
 
 class MarkovChainer:
     def __init__(self):
@@ -28,8 +54,8 @@ class MarkovChainer:
         else:
             self.markovs[triple.double] += triple
 
-    def add_sequence(self, text: str):
-        triples = create_sequence(text)
+    def add_sequence(self, text: str, clean_keys=False):
+        triples = create_sequence(text, clean_keys)
         for triple in triples:
             self.add_triple(triple)
 
@@ -39,13 +65,8 @@ class MarkovChainer:
     def __getitem__(self, item):
         return self.markovs.get(item, Triple(item[0], item[1]))
 
-
-def create_sequence(text: str):
-    tokens = text.split()
-    triples = [Triple(word, tokens[index + 1], tokens[index + 2]) for index, word in enumerate(tokens[:-2])]
-    if len(tokens) > 1:
-        triples.append(Triple(tokens[-2], tokens[-1], END_STOP))
-    return triples
+    def __contains__(self, item):
+        return item in self.markovs
 
 
 class Triple:
