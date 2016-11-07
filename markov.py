@@ -3,6 +3,7 @@ import random
 
 END_STOP = u"\u3002"
 
+
 class MarkovChainer:
     def __init__(self):
         self.markovs = {}
@@ -31,6 +32,9 @@ class MarkovChainer:
         triples = create_sequence(text)
         for triple in triples:
             self.add_triple(triple)
+
+    def get_random_key(self):
+        return random.choice(self.markovs.keys())
 
     def __getitem__(self, item):
         return self.markovs.get(item, Triple(item[0], item[1]))
@@ -78,6 +82,7 @@ class Triple:
 
     def __iadd__(self, other):
         self.third += other.third
+        return self
 
     def __str__(self):
         return "({t.first}, {t.second}): {ext}".format(t=self, ext=str(self.third))
@@ -85,8 +90,9 @@ class Triple:
     def __repr__(self):
         return self.__str__()
 
+
 if __name__ == '__main__':
-    test_string = "hello there friend of a friend! it is so very nice to meet you say hello to your friend pally."
+    test_string = "hello there friend of a friend! it is so of a friend of a pal very nice to meet you say hello to your friend pally."
     m = MarkovChainer()
     m.add_sequence(test_string)
     print(m.markovs[("there", "friend")])

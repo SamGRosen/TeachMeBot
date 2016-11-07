@@ -29,7 +29,7 @@ tracking_words = ['@TeachMeBot', 'the', 'is', 'a', 'for', 'be', 'to', 'and' 'in'
                   'would', 'there', 'their', 'what', 'so', 'up', 'out', 'if', 'about', 'who']
 last_tweet = None
 
-log = diary.Diary("logs.txt")
+log = diary.Diary("bot.log")
 
 
 def utf(text):
