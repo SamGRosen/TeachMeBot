@@ -1,37 +1,37 @@
 # Teach Me Bot
 # Python 2.7.8 w/ Tweepy , 3.4 compatible
-import datetime
+from configparser import ConfigParser
 import random
 import tweepy
 import diary
 import json
 
-import markov
 from listeners import EnglishListener, MentionListener
-from configparser import ConfigParser
+import markov
 
 secret = ConfigParser()
 secret.read("secret.cfg")
 credentials = secret["SECRET"]
 consumer_token = credentials["ConsumerToken"]
 consumer_secret = credentials["ConsumerSecret"]
-auth = tweepy.OAuthHandler(consumer_token, consumer_secret)
-# TeachMeBot credentials
 access_key = credentials["AccessKey"]
 access_secret = credentials["AccessSecret"]
+auth = tweepy.OAuthHandler(consumer_token, consumer_secret)
 auth.set_access_token(access_key, access_secret)
 api = tweepy.API(auth)
-tracking_words = ['@TeachMeBot', 'the', 'is', 'a', 'for', 'be', 'to', 'and' 'in', 'that', 'have', 'I',
+
+tracking_words = ['the', 'is', 'a', 'for', 'be', 'to', 'and' 'in', 'that', 'have', 'I',
                   ' ', 'it', 'not', 'on', 'with', 'he', 'as', 'you', 'she', 'do', 'at', 'but', 'why', 'this',
                   'by', 'from', 'they', 'did', 'we', 'say', 'him', 'or', 'an', 'will', 'my', 'one', 'all',
                   'would', 'there', 'their', 'what', 'so', 'up', 'out', 'if', 'about', 'who']
-last_tweet = None
 
 log = diary.Diary("bot.log")
+END_STOP = u"\u3002"
 
 
 def utf(text):
     return tweepy.utils.convert_to_utf8_str(text)
+
 
 class Checker:
     def __init__(self, marker, action=None):
@@ -45,24 +45,19 @@ class Checker:
             if self.action:
                 self.action()
 
-class TeachMeBot():
-    def __init__(self, wait=3600, pages=5, rpp=50):
-        ''' loop - # of seconds until next tweetsweep
-                        pages - # of pages to grab during tweetsweep
-                        rpp - # of results per page '''
-        self.wait = wait
-        self.pages = pages
-        self.rpp = rpp
+
+class TeachMeBot:
+    def __init__(self):
         self.checker = Checker(1000, self.toggle_stream)
         self.brain = markov.MarkovChainer()
-        self.count = 0
-        self.replies = 0
-        self.period = '{.}'
         self.running = True
 
     def load(self):
-        self.listener = EnglishListener(robot=self)
-        self.stream = tweepy.Stream(auth, self.listener)
+        self.english_listener = EnglishListener(robot=self)
+        self.english_stream = tweepy.Stream(auth, self.english_listener)
+        self.mention_listener = MentionListener(robot=self, handle="@TeachMeBot")
+        self.mention_stream = tweepy.Stream(auth, self.mention_listener)
+
         self.query = api.saved_searches()[0].query
 
     def loop(self):
@@ -76,15 +71,17 @@ class TeachMeBot():
             pass
 
     def main_stream(self):
-        self.stream.filter(track=tracking_words, languages=['en'], async=True)
+        self.english_stream.filter(track=tracking_words, languages=['en'], async=True)
 
     def disconnect(self):
         self.running = False
-        self.stream.disconnect()
+        self.english_stream.disconnect()
+        self.mention_stream.disconnect()
 
     def toggle_stream(self):
         self.english_stream.disconnect()
-        # WAIT UNTIL THE HOUR IN FILTER
+        # WAIT UNTIL THE HOUR IN STREAM.FILTER
+        self.english_stream.filter(track=tracking_words, languages=['en'], async=True)
 
     def handle_data(self, data):
         if self.is_readable(data):
@@ -138,7 +135,8 @@ def main_loop():
     try:
         t.loop()
     except BaseException as e:
-        log.error("ERROR OCCURED -- sleep for 3 min", e)
+        log.error("ERROR OCCURED -- sleep for 3 min")
+        log.error(e)
         t.disconnect()
         del t
         tweepy.streaming.sleep(180)

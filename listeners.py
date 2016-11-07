@@ -1,17 +1,12 @@
 from diary import Diary
 import tweepy
 
-tracking_words = ['the', 'is', 'a', 'for', 'be', 'to', 'and' 'in', 'that', 'have', 'I',
-                  ' ', 'it', 'not', 'on', 'with', 'he', 'as', 'you', 'she', 'do', 'at', 'but', 'why', 'this',
-                  'by', 'from', 'they', 'did', 'we', 'say', 'him', 'or', 'an', 'will', 'my', 'one', 'all',
-                  'would', 'there', 'their', 'what', 'so', 'up', 'out', 'if', 'about', 'who']
-
 log = Diary("streaming.log")
+
 
 class EnglishListener(tweepy.streaming.StreamListener):
     def __init__(self, robot):
         super(EnglishListener, self).__init__()
-        self.count = 0
         self.robot = robot
 
     def on_data(self, data):
@@ -48,7 +43,6 @@ class EnglishListener(tweepy.streaming.StreamListener):
 class MentionListener(EnglishListener):
     def __init__(self, robot, handle="@TeachMeBot"):
         super(MentionListener, self).__init__(robot)
-        self.count = 0
         self.robot = robot
         self.handle = handle
 
