@@ -25,8 +25,8 @@ class EnglishListener(tweepy.streaming.StreamListener):
             sleep(1800)
 
     def on_exception(self, status):
-        log.warn('Sleeping for 3 min due to --')
-        log.warn(status.args)
+        log.error('Sleeping for 3 min due to --')
+        log.error(str(status.args))
         print(status)
         sleep(180)
 

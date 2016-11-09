@@ -31,6 +31,7 @@ tracking_words = ['the', 'is', 'a', 'for', 'be', 'to', 'and' 'in', 'that', 'have
 
 log = Diary("bot.log")
 END_STOP = u"\u3002"
+TWEETS_PER_CYCLE = 1000
 
 
 def utf(text):
@@ -52,7 +53,7 @@ class Checker:
 
 class TeachMeBot:
     def __init__(self):
-        self.checker = Checker(1000, self.toggle_stream)
+        self.checker = Checker(TWEETS_PER_CYCLE, self.toggle_stream)
         self.brain = markov.MarkovChainer()
         self.running = True
 
@@ -88,10 +89,10 @@ class TeachMeBot:
         seconds = 60 * (60 - now.minute) - now.second
         log.log("Waiting {} seconds until next hour".format(seconds))
         sleep(seconds)
+        log.log("Beginning new stream")
         self.english_stream.filter(track=tracking_words, languages=['en'], async=False)
 
     def handle_data(self, data):
-
         if self.is_readable(data):
             as_json = json.loads(data)
             self.brain.add_sequence(as_json["text"])
@@ -107,7 +108,7 @@ class TeachMeBot:
         return "text" in data and "retweeted_status" not in data
 
     def reply(self, text, screen_name):
-        tweet = screen_name
+        tweet = screen_name + ' '
         line = text.split()
         if len(line) < 2:
             tweet += self.random_tweet()
@@ -138,12 +139,10 @@ class TeachMeBot:
         for tweet in timeline:
             api.destroy_status(tweet.id)
 
-
-def main():
+if __name__ == '__main__':
     t = TeachMeBot()
     t.load()
-    t.loop()
-
-
-if __name__ == '__main__':
-    main()
+    try:
+        t.loop()
+    except Exception as e:
+        print(e)
