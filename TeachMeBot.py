@@ -29,7 +29,7 @@ tracking_words = ['the', 'is', 'a', 'for', 'be', 'to', 'and' 'in', 'that', 'have
                   'by', 'from', 'they', 'did', 'we', 'say', 'him', 'or', 'an', 'will', 'my', 'one', 'all',
                   'would', 'there', 'their', 'what', 'so', 'up', 'out', 'if', 'about', 'who']
 
-log = Diary("bot.log")
+log = Diary("bot.log", encoding="utf-16", also_print=True)
 END_STOP = u"\u3002"
 TWEETS_PER_CYCLE = 1000
 

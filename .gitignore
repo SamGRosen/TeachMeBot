@@ -1,2 +1,5 @@
 secret.cfg
 *.log
+
+__pychache__/
+*.pyc
